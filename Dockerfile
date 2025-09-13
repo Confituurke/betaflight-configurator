@@ -21,8 +21,12 @@ RUN yarn install --frozen-lockfile --production=false
 # Copy source code
 COPY . .
 
-# Configure Git to trust the repository (needed for Vite config)
-RUN git config --global --add safe.directory /app
+# Initialize git repository to satisfy Vite config requirements
+RUN git init && \
+    git config user.email "build@docker.local" && \
+    git config user.name "Docker Build" && \
+    git add . && \
+    git commit -m "Initial commit for build"
 
 # Build the application
 RUN yarn build
