@@ -1,10 +1,10 @@
-# Use Node.js 20.19.4 as specified in .nvmrc
-FROM node:20.19.4-alpine
+# Multi-stage build for production deployment
+FROM node:20.19.4-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for building
 RUN apk add --no-cache \
     git \
     python3 \
@@ -12,13 +12,11 @@ RUN apk add --no-cache \
     g++ \
     && rm -rf /var/cache/apk/*
 
-# Yarn is already included in the Node.js Alpine image, so we don't need to install it
-
 # Copy package files
 COPY package.json yarn.lock ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --production=false
 
 # Copy source code
 COPY . .
@@ -26,22 +24,40 @@ COPY . .
 # Configure Git to trust the repository (needed for Vite config)
 RUN git config --global --add safe.directory /app
 
-# Expose the development server port
-EXPOSE 8000
+# Build the application
+RUN yarn build
 
-# Expose the preview server port
-EXPOSE 8080
+# Production stage - use a simple HTTP server
+FROM node:20.19.4-alpine AS production
 
-# Create a non-root user for security
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Install serve globally to serve static files
+RUN npm install -g serve
+
+# Copy built application from builder stage
+COPY --from=builder /app/src/dist /app/dist
+
+# Create a simple health check endpoint
+RUN echo '<!DOCTYPE html><html><head><title>Health Check</title></head><body><h1>OK</h1></body></html>' > /app/dist/health
+
+# Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Change ownership of the app directory to the nodejs user
+# Set proper permissions
 RUN chown -R nextjs:nodejs /app
 
-# Configure Git for the nextjs user as well
+# Switch to non-root user
 USER nextjs
-RUN git config --global --add safe.directory /app
 
-# Default command for development
-CMD ["yarn", "dev", "--host", "0.0.0.0"]
+# Expose port 8080 (Coolify standard)
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Start the application using serve
+CMD ["serve", "-s", "/app/dist", "-l", "8080"]

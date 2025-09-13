@@ -1,57 +1,28 @@
+version: '3.8'
+
 services:
-  betaflight-dev:
+  betaflight-configurator:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: betaflight-configurator-dev
+    container_name: betaflight-configurator
+    restart: unless-stopped
     ports:
-      - "8000:8000"  # Development server
-      - "8080:8080"  # Preview server
-    volumes:
-      # Mount source code for hot reloading
-      - .:/app
-      # Exclude node_modules to avoid conflicts
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-    stdin_open: true
-    tty: true
-    networks:
-      - betaflight-network
-
-  # Optional: Add a service for running tests
-  betaflight-test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: betaflight-configurator-test
-    volumes:
-      - .:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=test
-    command: ["yarn", "test"]
-    profiles:
-      - test
-    networks:
-      - betaflight-network
-
-  # Optional: Add a service for building production version
-  betaflight-build:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: betaflight-configurator-build
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - "8080:8080"
     environment:
       - NODE_ENV=production
-    command: ["yarn", "build"]
-    profiles:
-      - build
+      - PORT=8080
     networks:
       - betaflight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.docker.compose.project=betaflight-configurator"
+      - "com.docker.compose.service=betaflight-configurator"
 
 networks:
   betaflight-network:
