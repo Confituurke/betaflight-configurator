@@ -1,0 +1,58 @@
+services:
+  betaflight-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: betaflight-configurator-dev
+    ports:
+      - "8000:8000"  # Development server
+      - "8080:8080"  # Preview server
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true
+    networks:
+      - betaflight-network
+
+  # Optional: Add a service for running tests
+  betaflight-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: betaflight-configurator-test
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+    command: ["yarn", "test"]
+    profiles:
+      - test
+    networks:
+      - betaflight-network
+
+  # Optional: Add a service for building production version
+  betaflight-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: betaflight-configurator-build
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+    command: ["yarn", "build"]
+    profiles:
+      - build
+    networks:
+      - betaflight-network
+
+networks:
+  betaflight-network:
+    driver: bridge
