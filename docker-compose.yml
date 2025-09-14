@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: betaflight-configurator-dev
     ports:
-      - "8000:8000"  # Development server
-      - "8080:8080"  # Preview server
+      - "8001:8000"  # Development server
+      - "8081:8080"  # Preview server
     volumes:
       # Mount source code for hot reloading
       - .:/app
